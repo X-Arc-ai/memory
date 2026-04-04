@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-memory"
+version = "0.1.0"
+description = "Give your AI coding agent memory across sessions"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+authors = [{name = "X-Arc AI", email = "contact@x-arc.ai"}]
+keywords = ["ai", "coding-agent", "memory", "claude-code", "mcp", "session-history", "context"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "lancedb>=0.20.0",
+    "sentence-transformers>=3.0.0",
+    "click>=8.1.0",
+    "tantivy>=0.22.0",
+    "chonkie>=1.5.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.2.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+memory = "memory.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/x-arc-ai/memory"
+Repository = "https://github.com/x-arc-ai/memory"
+Issues = "https://github.com/x-arc-ai/memory/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+memory = ["templates/**/*", "templates/**/.gitkeep"]
