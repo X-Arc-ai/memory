@@ -38,6 +38,20 @@ STYLE_LABEL = Style(color=TEXT_MUTED)
 
 console = Console()
 
+# Quiet mode toggle -- when True, print_* helpers become no-ops.
+# Used by `memory ingest --quiet` and the SessionEnd hook.
+_quiet = False
+
+
+def set_quiet(value: bool):
+    """Enable or disable quiet mode globally for this process."""
+    global _quiet
+    _quiet = value
+
+
+def is_quiet() -> bool:
+    return _quiet
+
 # Box style matching X-Arc's minimal 1px borders
 MEMORY_BOX = box.Box(
     "    \n"
@@ -64,6 +78,8 @@ def brand_header():
 
 def print_empty_state(message: str, hint: str = ""):
     """Empty state with helpful guidance."""
+    if _quiet:
+        return
     console.print()
     console.print(f"  {message}", style=STYLE_SECONDARY)
     if hint:
@@ -105,6 +121,8 @@ def print_projects(projects: list[dict]):
 
 def print_ingest_start(session_count: int, project_count: int):
     """Ingest operation header."""
+    if _quiet:
+        return
     console.print()
     line = Text()
     line.append("  indexing ", style=STYLE_SECONDARY)
@@ -119,6 +137,8 @@ def print_ingest_start(session_count: int, project_count: int):
 
 def print_ingest_session(index: int, total: int, session_id: str, turns: int, chunks: int):
     """Single session ingestion progress line."""
+    if _quiet:
+        return
     line = Text()
     line.append(f"  [{index}/{total}]", style=STYLE_MUTED)
     line.append(f" {session_id[:12]}", style=STYLE_SECONDARY)
@@ -130,6 +150,8 @@ def print_ingest_session(index: int, total: int, session_id: str, turns: int, ch
 
 def print_ingest_complete(sessions: int, chunks: int):
     """Ingest completion summary."""
+    if _quiet:
+        return
     console.print()
     line = Text()
     line.append("  done. ", style=STYLE_SECONDARY)
@@ -143,6 +165,8 @@ def print_ingest_complete(sessions: int, chunks: int):
 
 def print_ingest_up_to_date():
     """Nothing to ingest."""
+    if _quiet:
+        return
     console.print()
     console.print("  all sessions up to date.", style=STYLE_MUTED)
     console.print()
@@ -219,6 +243,8 @@ def print_forget(session_id: str, count: int):
 
 def print_model_download(model_name: str):
     """Show model download notice."""
+    if _quiet:
+        return
     line = Text()
     line.append("  downloading ", style=STYLE_MUTED)
     line.append(model_name, style=STYLE_SECONDARY)
@@ -228,6 +254,8 @@ def print_model_download(model_name: str):
 
 def print_embedding_progress(chunk_count: int):
     """Show embedding progress notice."""
+    if _quiet:
+        return
     line = Text()
     line.append("  embedding ", style=STYLE_MUTED)
     line.append(str(chunk_count), style=STYLE_SECONDARY)
@@ -237,16 +265,22 @@ def print_embedding_progress(chunk_count: int):
 
 def print_fts_building():
     """Show FTS index building notice."""
+    if _quiet:
+        return
     console.print("  building search index...", style=STYLE_MUTED)
 
 
 def print_warning(message: str):
     """Warning message."""
+    if _quiet:
+        return
     console.print(f"  {message}", style=Style(color="#eab308"))
 
 
 def print_deleted_old(count: int):
     """Old chunks deleted for updated sessions."""
+    if _quiet:
+        return
     console.print(
         f"  updated {count} existing sessions",
         style=STYLE_MUTED,

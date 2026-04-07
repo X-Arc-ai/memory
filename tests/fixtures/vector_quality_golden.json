@@ -1,0 +1,22 @@
+{
+  "ACID transactions": [
+    "test-session-001_1",
+    "test-session-001_2"
+  ],
+  "PostgreSQL migration": [
+    "test-session-001_2",
+    "test-session-001_1"
+  ],
+  "billing pipeline": [
+    "test-session-001_1",
+    "test-session-001_2"
+  ],
+  "feature flags": [
+    "test-session-001_2",
+    "test-session-001_1"
+  ],
+  "team familiarity": [
+    "test-session-001_1",
+    "test-session-001_2"
+  ]
+}

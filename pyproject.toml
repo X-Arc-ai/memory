@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-memory"
-version = "0.1.0"
+version = "0.2.0"
 description = "Give your AI coding agent memory across sessions"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -23,10 +23,10 @@ classifiers = [
 ]
 dependencies = [
     "lancedb>=0.20.0",
-    "sentence-transformers>=3.0.0",
+    "fastembed>=0.4.0",
     "click>=8.1.0",
     "tantivy>=0.22.0",
-    "chonkie>=1.5.0",
+    "chonkie[semantic]>=1.5.0",
     "rich>=13.0.0",
 ]
 
@@ -36,6 +36,9 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 memory = "memory.cli:cli"
+# Second entry point so `uvx agent-memory ...` works without --from.
+# uvx infers the executable name from the package name by default.
+agent-memory = "memory.cli:cli"
 
 [project.urls]
 Homepage = "https://github.com/x-arc-ai/memory"
