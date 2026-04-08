@@ -1,17 +1,9 @@
 """Memory -- Give Your AI Coding Agent Memory Across Sessions."""
 
-import sys
 import os
-import warnings
 
-# Suppress HuggingFace noise on import (before any HF imports)
-os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+# Silences a tokenizers warning if any transitive dep still references HF.
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-warnings.filterwarnings("ignore")
-
-import logging
-logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 import click
 import json
@@ -26,13 +18,32 @@ def cli():
 
 
 @cli.command()
-@click.option("--dir", "directory", type=click.Path(exists=True, file_okay=False, path_type=Path),
+@click.option("--dir", "directory",
+              type=click.Path(exists=True, file_okay=False, path_type=Path),
               help="Project directory (default: current directory)")
 @click.option("--force", is_flag=True, help="Overwrite existing .context/")
-def init(directory, force):
+@click.option("--mcp", type=click.Choice(["user", "project", "local", "none"]),
+              help="MCP install scope (skip prompt)")
+@click.option("--hook", type=click.Choice(["user", "project", "none"]),
+              help="SessionEnd hook install scope (skip prompt)")
+@click.option("--skills", type=click.Choice(["user", "project", "none"]),
+              help="Slash commands install scope (skip prompt)")
+@click.option("--ingest/--no-ingest", default=None,
+              help="Run initial ingest (skip prompt)")
+@click.option("--non-interactive", is_flag=True,
+              help="Skip all prompts; use sensible defaults")
+def init(directory, force, mcp, hook, skills, ingest, non_interactive):
     """Initialize context management in your project."""
     from .init import run_init
-    run_init(directory=directory, force=force)
+    run_init(
+        directory=directory,
+        force=force,
+        mcp=mcp,
+        hook=hook,
+        skills=skills,
+        do_ingest=ingest,
+        non_interactive=non_interactive,
+    )
 
 
 @cli.command()
@@ -65,10 +76,12 @@ def projects():
 @click.option("--sessions-dir", envvar="MEMORY_SESSIONS_DIR",
               help="Override session directory (default: auto-discover)")
 @click.option("--project", help="Filter to a specific project")
-def ingest(sessions_dir, project):
+@click.option("--quiet", "-q", is_flag=True,
+              help="Suppress progress output (for SessionEnd hook / cron).")
+def ingest(sessions_dir, project, quiet):
     """Index your conversation history."""
     from .ingester import run_ingest
-    run_ingest(sessions_dir=sessions_dir, project=project)
+    run_ingest(sessions_dir=sessions_dir, project=project, quiet=quiet)
 
 
 @cli.command()
@@ -143,3 +156,94 @@ def serve():
         click.echo("MCP support requires: pip install agent-memory[mcp]")
         raise SystemExit(1)
     run_server()
+
+
+@cli.command()
+@click.option("--from-dir", type=click.Path(path_type=Path),
+              help="Source directory (default: ~/.memory)")
+@click.option("--to-dir", type=click.Path(path_type=Path),
+              help="Destination directory (default: ~/.claude/memory)")
+@click.option("--dry-run", is_flag=True, help="Show what would be moved without acting")
+def migrate(from_dir, to_dir, dry_run):
+    """Move memory data from ~/.memory/ to ~/.claude/memory/."""
+    from .migrate import run_migrate
+    run_migrate(from_dir=from_dir, to_dir=to_dir, dry_run=dry_run)
+
+
+@cli.command("install-mcp")
+@click.option("--scope", type=click.Choice(["user", "project", "local"]),
+              help="Scope to register the MCP server at (default: prompt or 'user' if --non-interactive)")
+@click.option("--non-interactive", is_flag=True,
+              help="Skip prompts; use --scope or default to 'user'")
+@click.option("--dry-run", is_flag=True, help="Print what would happen without acting")
+def install_mcp_cmd(scope, non_interactive, dry_run):
+    """Register the memory MCP server with Claude Code."""
+    from .install.mcp import install_mcp, prompt_scope
+    if not scope:
+        scope = "user" if non_interactive else prompt_scope("user")
+    try:
+        install_mcp(scope=scope, non_interactive=non_interactive, dry_run=dry_run)
+    except RuntimeError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1)
+
+
+@cli.command("uninstall-mcp")
+@click.option("--scope", type=click.Choice(["user", "project", "local"]), default="user")
+@click.option("--dry-run", is_flag=True)
+def uninstall_mcp_cmd(scope, dry_run):
+    """Remove the memory MCP server from Claude Code."""
+    from .install.mcp import uninstall_mcp
+    try:
+        uninstall_mcp(scope=scope, dry_run=dry_run)
+    except RuntimeError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1)
+
+
+@cli.command("install-hook")
+@click.option("--scope", type=click.Choice(["user", "project"]),
+              help="Where to install (default: prompt or 'user' if --non-interactive)")
+@click.option("--non-interactive", is_flag=True)
+@click.option("--dry-run", is_flag=True)
+def install_hook_cmd(scope, non_interactive, dry_run):
+    """Install the SessionEnd auto-ingest hook in Claude Code."""
+    from .install.hook import install_hook, prompt_scope
+    if not scope:
+        scope = "user" if non_interactive else prompt_scope("user")
+    try:
+        install_hook(scope=scope, dry_run=dry_run)
+    except RuntimeError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1)
+
+
+@cli.command("uninstall-hook")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--dry-run", is_flag=True)
+def uninstall_hook_cmd(scope, dry_run):
+    """Remove the memory SessionEnd hook from Claude Code."""
+    from .install.hook import uninstall_hook
+    try:
+        uninstall_hook(scope=scope, dry_run=dry_run)
+    except RuntimeError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1)
+
+
+@cli.command("install-skills")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--dry-run", is_flag=True)
+def install_skills_cmd(scope, dry_run):
+    """Install /memory-search, /memory-stats, etc. as Claude Code slash commands."""
+    from .install.skills import install_skills
+    install_skills(scope=scope, dry_run=dry_run)
+
+
+@cli.command("uninstall-skills")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--dry-run", is_flag=True)
+def uninstall_skills_cmd(scope, dry_run):
+    """Remove memory slash commands from Claude Code."""
+    from .install.skills import uninstall_skills
+    uninstall_skills(scope=scope, dry_run=dry_run)

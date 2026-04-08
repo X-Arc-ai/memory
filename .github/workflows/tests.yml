@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: pip install -e ".[dev,mcp]"
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  no-torch-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[mcp]"
+      - name: Verify torch is not in the dependency tree
+        run: |
+          if pip list | grep -i "^torch "; then
+            echo "ERROR: torch is in the dependency tree -- something pulled it back in."
+            pip show torch
+            exit 1
+          fi
+      - name: Verify torch is not imported on model load
+        run: |
+          python -c "import sys, memory.ingester; memory.ingester._get_embed_model(); assert 'torch' not in sys.modules, 'torch was imported as a side effect!'"

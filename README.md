@@ -9,58 +9,72 @@
 
 ---
 
-## Quick Start
-
-### Search Past Conversations
+## Install
 
 ```bash
-pip install agent-memory
-memory ingest              # Index your conversation history
-memory search "auth flow"  # Find past discussions
+uv tool install agent-memory
+memory init
 ```
 
-### Structured Context
+That two-step sequence:
+
+- Installs agent-memory as a persistent user-level tool in `~/.local/bin`
+- Then (via `memory init`) registers the MCP server, installs the SessionEnd auto-ingest hook, installs `/memory-search` / `/memory-stats` / `/memory-recall` / `/memory-forget` slash commands, scaffolds `.context/`, updates your CLAUDE.md, and runs the initial ingest
+
+After that, your agent has memory. You don't have to think about it again.
+
+**Why `uv tool install` and not `uvx`?** `uvx` runs tools from an ephemeral cache that can be garbage-collected. Since the `memory init` flow registers a hook and MCP server that point at the installed binary, we need a **durable** location — that's what `uv tool install` provides. `memory init` will warn you if it detects an ephemeral path.
+
+### Don't have uv?
 
 ```bash
-memory init                # Scaffold .context/ in your project
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Your agent now maintains context across sessions. Decisions, architecture
-notes, and project status are captured automatically via CLAUDE.md instructions.
+uv is a single Rust binary, ~30 MB. The fastest way to install and run Python tools.
+
+### Quick one-off trial (no persistent install)
+
+Just want to see the CLI without installing anything durable?
+
+```bash
+uvx agent-memory --help
+uvx agent-memory stats
+```
+
+This works, but don't use it for `init` / `install-hook` / `install-mcp` — those write paths into Claude Code's config, and the ephemeral `uvx` path may disappear later.
+
+### Pip install (for Python developers)
+
+```bash
+pip install --user agent-memory[mcp]
+memory init
+```
+
+Or in an isolated virtualenv if you prefer. Both `memory` and `agent-memory` entry points are provided; use whichever you like.
+
+### Alternative install methods
+
+```bash
+# macOS / Linux: Homebrew (after the formula is published)
+brew tap x-arc-ai/memory
+brew install agent-memory
+
+# Windows: Scoop
+scoop bucket add x-arc https://github.com/x-arc-ai/scoop-bucket
+scoop install agent-memory
+
+# Direct download (no package manager)
+curl -L https://github.com/x-arc-ai/memory/releases/latest/download/memory-ubuntu-latest.pyz -o memory
+chmod +x memory
+./memory --help
+```
 
 ---
 
-## Give Your Agent Memory (MCP)
+## How Your Agent Uses It
 
-Your agent can search your conversation history as a native tool.
-No copy-paste, no manual lookup.
-
-### 1. Install with MCP support
-
-```bash
-pip install agent-memory[mcp]
-memory ingest  # Index first, if you haven't
-```
-
-### 2. Add to Claude Code
-
-Add to `~/.claude/settings.json` (all projects) or `.claude/settings.json` (one project):
-
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "command": "memory",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-### 3. Use it
-
-Start a new Claude Code session. Your agent now has access to `search_sessions`.
-It will search your conversation history when relevant.
+Once installed, the agent searches your conversation history as a native tool — no copy-paste, no manual lookup.
 
 ```
 You: Why did we switch from MongoDB to PostgreSQL?
@@ -73,6 +87,14 @@ Agent: On March 15, you discussed this with your agent. The key reasons were:
        2. PostGIS for location queries
        3. Team familiarity with PostgreSQL
        The migration was completed on March 22 via PR #47.
+```
+
+You can also drive it directly via slash commands:
+
+```
+/memory-search auth flow
+/memory-stats
+/memory-recall feature flag rollout
 ```
 
 ### Enhance with CLAUDE.md (Optional)
@@ -149,18 +171,36 @@ memory init --force
 ## CLI Reference
 
 ```
-memory init [--dir DIR] [--force]
-    Initialize context management in your project.
-    Creates .context/ directory and adds instructions to CLAUDE.md.
+memory init [--mcp=user|project|local|none] [--hook=user|project|none]
+            [--skills=user|project|none] [--ingest/--no-ingest]
+            [--non-interactive] [--dir DIR] [--force]
+    Set up everything: scaffold .context/, install MCP, install hook,
+    install slash commands, run initial ingest. Prompts interactively
+    unless --non-interactive.
 
-memory ingest [--sessions-dir DIR] [--project NAME]
+memory ingest [--sessions-dir DIR] [--project NAME] [--quiet]
     Index conversation history. Auto-discovers all Claude Code projects.
-    Only processes new or changed sessions (incremental).
+    --quiet suppresses progress output (used by the SessionEnd hook).
 
 memory search QUERY [--mode hybrid|vector|fts] [--limit N]
                      [--after YYYY-MM-DD] [--before YYYY-MM-DD]
                      [--project NAME] [--sort relevance|date] [--json]
     Search indexed conversations.
+
+memory install-mcp   [--scope user|project|local] [--non-interactive]
+memory uninstall-mcp [--scope user|project|local]
+    Register/unregister the memory MCP server with Claude Code.
+
+memory install-hook   [--scope user|project] [--non-interactive]
+memory uninstall-hook [--scope user|project]
+    Install/remove the SessionEnd auto-ingest hook.
+
+memory install-skills   [--scope user|project]
+memory uninstall-skills [--scope user|project]
+    Install/remove /memory-search, /memory-stats, /memory-recall, /memory-forget.
+
+memory migrate [--from-dir PATH] [--to-dir PATH] [--dry-run]
+    Move memory data from ~/.memory/ to ~/.claude/memory/.
 
 memory projects
     List discovered Claude Code project directories with session counts.
@@ -172,7 +212,7 @@ memory forget --session SESSION_ID
     Remove a specific session from the index (privacy).
 
 memory serve
-    Start MCP server for agent integration (requires: pip install agent-memory[mcp]).
+    Start the MCP stdio server (used by Claude Code, not by you directly).
 ```
 
 ---
@@ -180,19 +220,19 @@ memory serve
 ## How It's Built
 
 - [LanceDB](https://lancedb.com/) -- embedded vector database, no server process
-- [sentence-transformers](https://www.sbert.net/) -- local embeddings, no API needed
-- [Chonkie](https://github.com/chonkie-ai/chonkie) -- semantic chunking
+- [fastembed](https://github.com/qdrant/fastembed) -- ONNX embeddings, ~30 MB, no PyTorch
+- [Chonkie](https://github.com/chonkie-ai/chonkie) + [model2vec](https://github.com/MinishLab/model2vec) -- semantic chunking with static embeddings (numpy only)
 - [Click](https://click.palletsprojects.com/) -- CLI framework
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) -- agent integration
 
-~800 lines of Python. Fully auditable. No magic.
+~1500 lines of Python. Fully auditable. No magic. **Install footprint: ~500 MB** (dominated by pyarrow + lancedb + onnxruntime) — ~3x smaller than the old sentence-transformers + torch install, which was pushing 1.6 GB.
 
 **Nothing leaves your machine.** No cloud. No API keys. No telemetry.
 
 ```
 Session files (.jsonl)
-  -> Semantic chunking (groups related content)
-  -> Local embeddings (BAAI/bge-small-en-v1.5, 384 dims)
+  -> Semantic chunking (model2vec, ~5 ms per chunk)
+  -> Local embeddings (fastembed BAAI/bge-small-en-v1.5, ONNX, 384 dims)
   -> LanceDB (embedded vector database)
   -> Hybrid search (semantic + keyword + reranking)
 ```
@@ -201,12 +241,17 @@ Session files (.jsonl)
 
 ## Roadmap
 
-**v1 (current):** Claude Code session search + context management + MCP server
+**v1 (current):**
+- Claude Code session search + context management
+- MCP server with `claude mcp add` integration
+- SessionEnd auto-ingest hook
+- Slash commands (`/memory-search`, `/memory-stats`, `/memory-recall`, `/memory-forget`)
+- Single-binary releases (Homebrew, Scoop, direct download)
 
 **v2:**
 - Multi-tool support (Codex, Cursor, Aider, Windsurf)
-- Auto-ingestion on session end (Claude Code hook)
 - MCP HTTP transport for remote setups
+- Full Claude Code plugin distribution
 
 Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

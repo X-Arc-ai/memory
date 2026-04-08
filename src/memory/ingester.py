@@ -2,8 +2,6 @@
 
 import json
 import os
-import sys
-import io
 import time
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
@@ -18,6 +16,7 @@ from .config import (
     SEMANTIC_CHUNK_SIZE,
     SEMANTIC_SIMILARITY_THRESHOLD,
     MIN_CHUNK_CHARS,
+    INDEX_VERSION,
     ensure_data_dir,
 )
 
@@ -42,40 +41,22 @@ def _approx_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def _is_model_cached(model_name: str) -> bool:
-    """Check if a HuggingFace model is already downloaded."""
-    try:
-        import huggingface_hub
-        huggingface_hub.model_info(model_name, local_files_only=True)
-        return True
-    except Exception:
-        return False
-
-
 def _get_semantic_chunker():
-    """Get Chonkie SemanticChunker with local sentence-transformers embeddings."""
+    """Get Chonkie SemanticChunker with model2vec embeddings (no PyTorch).
+
+    Uses `minishlab/potion-base-32M`, a static numpy-only embedding model
+    distilled from a sentence transformer. No ONNX, no torch.
+    """
     from chonkie import SemanticChunker
-    from chonkie.embeddings import SentenceTransformerEmbeddings
-    from . import ui
+    from chonkie.embeddings import Model2VecEmbeddings
 
-    cached = _is_model_cached(CHUNKING_EMBEDDING_MODEL)
-    if cached:
-        old_stdout = sys.stdout
-        sys.stdout = io.StringIO()
-        try:
-            embeddings = SentenceTransformerEmbeddings(model=CHUNKING_EMBEDDING_MODEL)
-        finally:
-            sys.stdout = old_stdout
-    else:
-        ui.print_model_download(CHUNKING_EMBEDDING_MODEL)
-        embeddings = SentenceTransformerEmbeddings(model=CHUNKING_EMBEDDING_MODEL)
+    embeddings = Model2VecEmbeddings(model=CHUNKING_EMBEDDING_MODEL)
 
-    chunker = SemanticChunker(
+    return SemanticChunker(
         embedding_model=embeddings,
         chunk_size=SEMANTIC_CHUNK_SIZE,
-        similarity_threshold=SEMANTIC_SIMILARITY_THRESHOLD,
+        threshold=SEMANTIC_SIMILARITY_THRESHOLD,
     )
-    return chunker
 
 
 def chunk_turns(turns: list, chunker=None) -> list[ConversationChunk]:
@@ -130,7 +111,7 @@ def _load_ingestion_state() -> dict:
     if INGESTION_STATE_PATH.exists():
         with open(INGESTION_STATE_PATH) as f:
             return json.load(f)
-    return {"last_run": None, "sessions_ingested": {}}
+    return {"last_run": None, "sessions_ingested": {}, "index_version": INDEX_VERSION}
 
 
 def _save_ingestion_state(state: dict):
@@ -148,39 +129,49 @@ def _get_db():
     return lancedb.connect(str(DB_PATH))
 
 
-def _get_embed_fn():
-    """Get the sentence-transformers embedding function."""
-    from lancedb.embeddings import get_registry
-    from . import ui
+def _get_embed_model():
+    """Get a fastembed TextEmbedding model for storage/search embeddings.
 
-    st = get_registry().get("sentence-transformers")
+    Uses ONNX Runtime under the hood -- no PyTorch.
+    Model is cached at ~/.cache/fastembed/ on first use.
+    """
+    from fastembed import TextEmbedding
 
-    cached = _is_model_cached(EMBEDDING_MODEL)
-    if cached:
-        old_stdout = sys.stdout
-        sys.stdout = io.StringIO()
-        try:
-            fn = st.create(name=EMBEDDING_MODEL, device="cpu")
-        finally:
-            sys.stdout = old_stdout
-    else:
-        ui.print_model_download(EMBEDDING_MODEL)
-        fn = st.create(name=EMBEDDING_MODEL, device="cpu")
-
-    return fn
+    return TextEmbedding(model_name=EMBEDDING_MODEL)
 
 
-def run_ingest(sessions_dir: str | None = None, project: str | None = None):
+def run_ingest(sessions_dir: str | None = None, project: str | None = None, quiet: bool = False):
     """Run the full ingestion pipeline. Incremental -- only processes new/updated sessions."""
     import lancedb
     import pyarrow as pa
 
-    from .config import get_sessions_dirs
+    from .config import get_sessions_dirs, warn_if_legacy_data_present
     from .parsers.claude_code import ClaudeCodeParser
     from . import ui
 
+    ui.set_quiet(quiet)
+    warn_if_legacy_data_present()
+
     ensure_data_dir()
     parser = ClaudeCodeParser()
+
+    # Index-version check: force rebuild if the existing index predates the
+    # fastembed + model2vec swap. Vectors aren't bit-compatible with 0.1.0.
+    state = _load_ingestion_state()
+    if state.get("index_version", 1) < INDEX_VERSION:
+        if DB_PATH.exists():
+            try:
+                db = _get_db()
+                if TABLE_NAME in db.list_tables().tables:
+                    ui.print_warning(
+                        f"Memory has been upgraded to index version {INDEX_VERSION}. "
+                        f"Rebuilding index from scratch (one-time)..."
+                    )
+                    db.drop_table(TABLE_NAME)
+            except Exception as e:
+                ui.print_warning(f"Could not drop old table: {e}. Continuing with rebuild.")
+        state = {"last_run": None, "sessions_ingested": {}, "index_version": INDEX_VERSION}
+        _save_ingestion_state(state)
 
     # Multi-project discovery
     if sessions_dir:
@@ -207,7 +198,6 @@ def run_ingest(sessions_dir: str | None = None, project: str | None = None):
         ui.print_empty_state(f"No sessions found in {len(dirs)} project directories.")
         return
 
-    state = _load_ingestion_state()
     ingested = state.get("sessions_ingested", {})
 
     # Determine which sessions need processing
@@ -261,17 +251,21 @@ def run_ingest(sessions_dir: str | None = None, project: str | None = None):
             ingested[entry["sessionId"]] = {"mtime": mtime, "chunks": 0}
         state["last_run"] = datetime.now(timezone.utc).isoformat()
         state["sessions_ingested"] = ingested
+        state["index_version"] = INDEX_VERSION
         _save_ingestion_state(state)
         return
 
     # Prepare data for LanceDB
-    embed_fn = _get_embed_fn()
+    embed_model = _get_embed_model()
     db = _get_db()
 
-    # Generate embeddings
+    # Generate embeddings -- fastembed returns a generator of numpy arrays.
+    # passage_embed applies the BGE passage prefix, matching the query_embed
+    # prefix used by searcher.py. This is a free retrieval quality improvement
+    # over the old sentence-transformers setup which didn't use prefixes.
     ui.print_embedding_progress(len(all_chunks))
     texts = [c.text for c in all_chunks]
-    vectors = embed_fn.compute_source_embeddings(texts)
+    vectors = list(embed_model.passage_embed(texts))
 
     # Build records
     records = []
@@ -320,6 +314,7 @@ def run_ingest(sessions_dir: str | None = None, project: str | None = None):
 
     state["last_run"] = datetime.now(timezone.utc).isoformat()
     state["sessions_ingested"] = ingested
+    state["index_version"] = INDEX_VERSION
     _save_ingestion_state(state)
 
     ui.print_ingest_complete(len(to_process), len(all_chunks))

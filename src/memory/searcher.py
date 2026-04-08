@@ -1,8 +1,6 @@
 """Search interface for Memory."""
 
 import json
-import sys
-import io
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -32,19 +30,14 @@ def _get_db():
     return lancedb.connect(str(DB_PATH))
 
 
-def _get_embed_fn():
-    """Get the sentence-transformers embedding function."""
-    from lancedb.embeddings import get_registry
+def _get_embed_model():
+    """Get a fastembed TextEmbedding model for query embeddings.
 
-    st = get_registry().get("sentence-transformers")
-    # Suppress HF Hub warning printed to stdout during model creation
-    old_stdout = sys.stdout
-    sys.stdout = io.StringIO()
-    try:
-        fn = st.create(name=EMBEDDING_MODEL, device="cpu")
-    finally:
-        sys.stdout = old_stdout
-    return fn
+    Uses ONNX Runtime -- no PyTorch. Cached at ~/.cache/fastembed/.
+    """
+    from fastembed import TextEmbedding
+
+    return TextEmbedding(model_name=EMBEDDING_MODEL)
 
 
 def search(
@@ -73,6 +66,9 @@ def search(
         Tuple of (results list, metadata dict with total_matches info).
     """
     import lancedb
+
+    from .config import warn_if_legacy_data_present
+    warn_if_legacy_data_present()
 
     if not DB_PATH.exists():
         return [], {"total_matches": 0, "returned": 0, "truncated": False}
@@ -133,8 +129,9 @@ def search(
 
 def _vector_search(table, query: str, limit: int, where_clause: str | None) -> list[SearchResult]:
     """Semantic vector search."""
-    embed_fn = _get_embed_fn()
-    query_vec = embed_fn.compute_query_embeddings(query)[0]
+    embed_model = _get_embed_model()
+    # query_embed applies the BGE query-specific prefix for better retrieval.
+    query_vec = next(embed_model.query_embed([query]))
 
     q = table.search(query_vec).limit(limit)
     if where_clause:
@@ -182,8 +179,8 @@ def _fts_search(table, query: str, limit: int, where_clause: str | None) -> list
 
 def _hybrid_search(table, query: str, limit: int, where_clause: str | None) -> list[SearchResult]:
     """Hybrid search: vector + FTS with reranking."""
-    embed_fn = _get_embed_fn()
-    query_vec = embed_fn.compute_query_embeddings(query)[0]
+    embed_model = _get_embed_model()
+    query_vec = next(embed_model.query_embed([query]))
 
     try:
         q = table.search(query_vec, query_type="hybrid").limit(limit)
