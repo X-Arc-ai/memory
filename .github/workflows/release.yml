@@ -6,7 +6,25 @@ on:
       - "v*"
 
 jobs:
-  build:
+  publish-pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # trusted publishing (PyPI OIDC) if configured
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          python -m build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  build-binaries:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -31,8 +49,8 @@ jobs:
           name: memory-${{ matrix.os }}
           path: dist/
 
-  release:
-    needs: build
+  github-release:
+    needs: [publish-pypi, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
