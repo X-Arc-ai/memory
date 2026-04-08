@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 @click.group()
-@click.version_option(package_name="agent-memory")
+@click.version_option(package_name="xarc-memory")
 def cli():
     """Memory -- Give your AI coding agent memory across sessions."""
     pass
@@ -153,7 +153,7 @@ def serve():
     try:
         from .server import run_server
     except ImportError:
-        click.echo("MCP support requires: pip install agent-memory[mcp]")
+        click.echo("MCP support requires: pip install xarc-memory[mcp]")
         raise SystemExit(1)
     run_server()
 

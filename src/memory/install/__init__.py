@@ -18,7 +18,7 @@ def _is_executable_file(path: Path) -> bool:
 # and causing us to write a nonsense path into the user's settings.json.
 _MEMORY_BASENAMES = frozenset({
     "memory", "memory.pyz", "memory.exe",
-    "agent-memory", "agent-memory.pyz", "agent-memory.exe",
+    "xarc-memory", "xarc-memory.pyz", "xarc-memory.exe",
 })
 
 

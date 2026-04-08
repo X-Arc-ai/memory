@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agent-memory"
+name = "xarc-memory"
 version = "0.2.0"
 description = "Give your AI coding agent memory across sessions"
 readme = "README.md"
@@ -36,9 +36,9 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 memory = "memory.cli:cli"
-# Second entry point so `uvx agent-memory ...` works without --from.
-# uvx infers the executable name from the package name by default.
-agent-memory = "memory.cli:cli"
+# uvx infers the executable name from the package name by default,
+# so `uvx xarc-memory` looks for an `xarc-memory` executable.
+xarc-memory = "memory.cli:cli"
 
 [project.urls]
 Homepage = "https://github.com/x-arc-ai/memory"

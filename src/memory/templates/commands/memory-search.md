@@ -1,5 +1,5 @@
 ---
-description: Search past Claude Code conversations using agent-memory
+description: Search past Claude Code conversations using xarc-memory
 argument-hint: <query>
 ---
 

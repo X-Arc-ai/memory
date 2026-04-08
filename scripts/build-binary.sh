@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a single-file zipapp distribution of agent-memory using shiv.
+# Build a single-file zipapp distribution of xarc-memory using shiv.
 #
 # Usage:
 #   bash scripts/build-binary.sh [output-path]

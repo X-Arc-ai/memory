@@ -22,13 +22,13 @@ def test_readme_exists():
 
 def test_readme_install_section_uses_uv_tool_install():
     text = _readme_text()
-    # The canonical install is `uv tool install agent-memory` (durable).
+    # The canonical install is `uv tool install xarc-memory` (durable).
     # `uvx` is mentioned only for one-off trials; it must NOT appear as the
     # primary `init` install command because the ephemeral path breaks the
     # hook/MCP registrations.
-    assert "uv tool install agent-memory" in text
-    # And we still encourage `uvx agent-memory --help` for trial runs
-    assert "uvx agent-memory" in text
+    assert "uv tool install xarc-memory" in text
+    # And we still encourage `uvx xarc-memory --help` for trial runs
+    assert "uvx xarc-memory" in text
 
 
 def test_readme_references_only_real_subcommands():

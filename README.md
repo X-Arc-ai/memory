@@ -12,13 +12,13 @@
 ## Install
 
 ```bash
-uv tool install agent-memory
+uv tool install xarc-memory
 memory init
 ```
 
 That two-step sequence:
 
-- Installs agent-memory as a persistent user-level tool in `~/.local/bin`
+- Installs xarc-memory as a persistent user-level tool in `~/.local/bin`
 - Then (via `memory init`) registers the MCP server, installs the SessionEnd auto-ingest hook, installs `/memory-search` / `/memory-stats` / `/memory-recall` / `/memory-forget` slash commands, scaffolds `.context/`, updates your CLAUDE.md, and runs the initial ingest
 
 After that, your agent has memory. You don't have to think about it again.
@@ -38,8 +38,8 @@ uv is a single Rust binary, ~30 MB. The fastest way to install and run Python to
 Just want to see the CLI without installing anything durable?
 
 ```bash
-uvx agent-memory --help
-uvx agent-memory stats
+uvx xarc-memory --help
+uvx xarc-memory stats
 ```
 
 This works, but don't use it for `init` / `install-hook` / `install-mcp` — those write paths into Claude Code's config, and the ephemeral `uvx` path may disappear later.
@@ -47,22 +47,22 @@ This works, but don't use it for `init` / `install-hook` / `install-mcp` — tho
 ### Pip install (for Python developers)
 
 ```bash
-pip install --user agent-memory[mcp]
+pip install --user xarc-memory[mcp]
 memory init
 ```
 
-Or in an isolated virtualenv if you prefer. Both `memory` and `agent-memory` entry points are provided; use whichever you like.
+Or in an isolated virtualenv if you prefer. Both `memory` and `xarc-memory` entry points are provided; use whichever you like.
 
 ### Alternative install methods
 
 ```bash
 # macOS / Linux: Homebrew (after the formula is published)
 brew tap x-arc-ai/memory
-brew install agent-memory
+brew install xarc-memory
 
 # Windows: Scoop
 scoop bucket add x-arc https://github.com/x-arc-ai/scoop-bucket
-scoop install agent-memory
+scoop install xarc-memory
 
 # Direct download (no package manager)
 curl -L https://github.com/x-arc-ai/memory/releases/latest/download/memory-ubuntu-latest.pyz -o memory

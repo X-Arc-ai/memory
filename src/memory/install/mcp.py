@@ -39,8 +39,8 @@ def install_mcp(scope: Scope = "user", non_interactive: bool = False, dry_run: b
             "Could not resolve an absolute path to the `memory` binary. "
             "Falling back to the bare name `memory`, which may not be "
             "findable when Claude Code starts the MCP server. Consider "
-            "`uv tool install agent-memory` or `pip install --user "
-            "agent-memory` for a persistent binary on PATH."
+            "`uv tool install xarc-memory` or `pip install --user "
+            "xarc-memory` for a persistent binary on PATH."
         )
     elif is_ephemeral_install_path(binary):
         ui.print_warning(
@@ -48,7 +48,7 @@ def install_mcp(scope: Scope = "user", non_interactive: bool = False, dry_run: b
             "  This path may be garbage-collected by the package manager, "
             "which would\n"
             "  break the MCP registration silently. For a durable install, run:\n"
-            "    uv tool install agent-memory\n"
+            "    uv tool install xarc-memory\n"
             "  and re-run `memory install-mcp`."
         )
 

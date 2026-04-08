@@ -132,7 +132,7 @@ class TestEphemeralPathDetection:
     def test_uvx_cache_is_ephemeral(self):
         from memory.install import is_ephemeral_install_path
         assert is_ephemeral_install_path(
-            "/home/user/.cache/uv/archive-v0/abc123/bin/agent-memory"
+            "/home/user/.cache/uv/archive-v0/abc123/bin/xarc-memory"
         ) is True
 
     def test_uv_build_cache_is_ephemeral(self):
@@ -158,14 +158,14 @@ class TestEphemeralPathDetection:
         """`uv tool install` puts binaries in ~/.local/share/uv/tools/<pkg>/bin."""
         from memory.install import is_ephemeral_install_path
         assert is_ephemeral_install_path(
-            "/home/user/.local/share/uv/tools/agent-memory/bin/memory"
+            "/home/user/.local/share/uv/tools/xarc-memory/bin/memory"
         ) is False
 
     def test_uv_tool_install_custom_dir_is_persistent(self):
         """Custom UV_TOOL_DIR under /tmp should NOT be flagged."""
         from memory.install import is_ephemeral_install_path
         assert is_ephemeral_install_path(
-            "/tmp/scratch/uv-tools/agent-memory/bin/memory"
+            "/tmp/scratch/uv-tools/xarc-memory/bin/memory"
         ) is False
 
     def test_user_local_bin_is_persistent(self):

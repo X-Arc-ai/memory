@@ -52,7 +52,7 @@ def _is_memory_hook(entry: dict) -> bool:
     where <path-to-memory> could be bare `memory`, `$VENV/bin/memory`, or
     `/path/to/memory.pyz`. We detect ours by checking:
       - the first token's basename contains "memory" (matches bare `memory`,
-        `memory.pyz`, `agent-memory`, etc.)
+        `memory.pyz`, `xarc-memory`, etc.)
       - the command has ` ingest --quiet` somewhere after the first token
         (tolerates future additional flags)
     This is robust to absolute/relative paths and catches hooks written by
@@ -99,7 +99,7 @@ def install_hook(scope: Scope = "user", dry_run: bool = False):
             "Could not resolve an absolute path to the `memory` binary. "
             "The hook will use the bare name `memory`, which may not be "
             "findable by Claude Code's hook runner. Consider `uv tool install "
-            "agent-memory` or `pip install --user agent-memory` for a "
+            "xarc-memory` or `pip install --user xarc-memory` for a "
             "persistent binary on PATH."
         )
     else:
@@ -113,7 +113,7 @@ def install_hook(scope: Scope = "user", dry_run: bool = False):
                 "  This path may be garbage-collected by the package manager, "
                 "which would\n"
                 "  break the hook silently. For a durable install, run:\n"
-                "    uv tool install agent-memory\n"
+                "    uv tool install xarc-memory\n"
                 "  and re-run `memory install-hook`."
             )
 
