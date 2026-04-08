@@ -1,0 +1,19 @@
+{
+  "name": "x-arc",
+  "owner": {
+    "name": "X-Arc-ai",
+    "email": "hello@x-arc.ai"
+  },
+  "metadata": {
+    "description": "Plugins from X-Arc AI. AI agents that ship real work."
+  },
+  "plugins": [
+    {
+      "name": "xarc-memory",
+      "source": "./",
+      "description": "Persistent memory across Claude Code sessions. Auto-indexes conversations, hybrid search via MCP, fully local.",
+      "category": "development",
+      "tags": ["memory", "search", "mcp", "sessions", "context", "local"]
+    }
+  ]
+}

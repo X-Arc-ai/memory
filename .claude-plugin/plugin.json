@@ -1,0 +1,24 @@
+{
+  "name": "xarc-memory",
+  "version": "0.2.1",
+  "description": "Persistent memory across Claude Code sessions. Auto-indexes conversations, hybrid search via MCP, fully local.",
+  "author": {
+    "name": "X-Arc-ai",
+    "url": "https://x-arc.ai"
+  },
+  "homepage": "https://github.com/X-Arc-ai/memory",
+  "repository": "https://github.com/X-Arc-ai/memory",
+  "license": "Apache-2.0",
+  "keywords": [
+    "memory",
+    "search",
+    "mcp",
+    "sessions",
+    "context",
+    "embeddings",
+    "local"
+  ],
+  "prerequisites": {
+    "note": "Requires the xarc-memory backend: uv tool install xarc-memory"
+  }
+}
