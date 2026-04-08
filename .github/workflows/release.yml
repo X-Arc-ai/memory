@@ -38,6 +38,7 @@ jobs:
       - name: Build binary
         shell: bash
         run: |
+          mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             pip install shiv
             shiv -o dist/memory-windows-latest.pyz -e memory.cli:cli -p "python3" --reproducible --compressed ".[mcp]"

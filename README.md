@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.svg" alt="Memory" width="700">
+  <img src="https://raw.githubusercontent.com/X-Arc-ai/memory/main/assets/hero.svg" alt="Memory" width="700">
 </p>
 
 <p align="center">
@@ -149,11 +149,11 @@ memory init --force
 ## What It Looks Like
 
 <p align="center">
-  <img src="assets/demo-search.svg" alt="Memory search" width="680">
+  <img src="https://raw.githubusercontent.com/X-Arc-ai/memory/main/assets/demo-search.svg" alt="Memory search" width="680">
 </p>
 
 <p align="center">
-  <img src="assets/demo-stats.svg" alt="Memory stats" width="460">
+  <img src="https://raw.githubusercontent.com/X-Arc-ai/memory/main/assets/demo-stats.svg" alt="Memory stats" width="460">
 </p>
 
 ---
