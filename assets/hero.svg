@@ -8,10 +8,10 @@
       .dot-red { fill: #ff5f56; }
       .dot-yellow { fill: #ffbd2e; }
       .dot-green { fill: #27c93f; }
-      .brand { fill: #4ade80; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 48px; font-weight: 700; letter-spacing: 8px; }
-      .tagline { fill: #555555; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 14px; }
-      .cursor { fill: #4ade80; opacity: 0.8; }
-      .xarc { fill: #333338; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 11px; }
+      .brand { fill: #4ade80; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 48px; font-weight: 700; letter-spacing: 4px; }
+      .tagline { fill: #888888; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 14px; }
+      .cursor { fill: #4ade80; opacity: 0.9; }
+      .xarc { fill: #444448; font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace; font-size: 11px; }
     </style>
   </defs>
 
@@ -30,7 +30,7 @@
 
   <!-- Main content -->
   <text x="400" y="108" text-anchor="middle" class="brand">X-MEMORY</text>
-  <text x="400" y="140" text-anchor="middle" class="tagline">give your ai coding agent memory</text>
+  <text x="400" y="140" text-anchor="middle" class="tagline">every past conversation, one tool call away</text>
 
   <!-- Cursor blink -->
   <rect x="560" y="88" width="3" height="28" class="cursor">
